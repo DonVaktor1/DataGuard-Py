@@ -1,0 +1,6 @@
+pandas
+sqlalchemy
+great_expectations
+streamlit
+plotly
+python-dotenv
