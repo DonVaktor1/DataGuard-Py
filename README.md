@@ -1,2 +1,3 @@
 # DataGuard-Py
-Diploma Project
+Мета: Автоматизація контролю якості даних.
+Технології: Python, SQL, Streamlit.
