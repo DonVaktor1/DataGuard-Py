@@ -9,3 +9,4 @@ google-cloud-firestore
 pymongo
 requests
 extra-streamlit-components
+psycopg2-binary

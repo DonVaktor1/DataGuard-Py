@@ -17,17 +17,17 @@ if 'auth_error' not in st.session_state:
 check_auth()
 
 if not st.session_state.user:
-    login_page = st.Page("views/login_page.py", title="Вхід")
-    register_page = st.Page("views/register_page.py", title="Реєстрація")
+    login_page = st.Page("src/views/login_page.py", title="Вхід")
+    register_page = st.Page("src/views/register_page.py", title="Реєстрація")
     pg = st.navigation([login_page, register_page], position="hidden")
 else:
     main_page = st.Page(
-        "views/main_page.py", 
+        "src/views/main_page.py", 
         title="Дашборд", 
         default=True 
     )
     settings_page = st.Page(
-        "views/settings_page.py", 
+        "src/views/settings_page.py", 
         title="Налаштування", 
     )
 
