@@ -18,8 +18,8 @@ st.sidebar.title("DataGuard")
 
 if st.sidebar.button("Оновити дані", use_container_width=True):
     if "user_data_cache" in st.session_state: del st.session_state.user_data_cache
-    if "db_engine" in st.session_state: del st.session_state.db_engine
     if "cached_df" in st.session_state: del st.session_state.cached_df
+    if "table_names_cache" in st.session_state: del st.session_state.table_names_cache
     st.session_state.last_auto_refresh_time = time.time()
     st.rerun()
 
@@ -28,6 +28,11 @@ if st.sidebar.button("Налаштування", use_container_width=True):
         st.switch_page(st.session_state.settings_page_obj)
     else:
         st.switch_page("views/settings_page.py")
+
+def on_table_change():
+    st.session_state.selected_table = st.session_state.main_table_selector
+    if "cached_df" in st.session_state: 
+        del st.session_state.cached_df
 
 try:
     uid = st.session_state.user['localId']
@@ -69,55 +74,50 @@ try:
 
         c_table, c_limit = st.columns([3, 1])
         if tables:
-            default_index = tables.index(st.session_state.selected_table) if st.session_state.selected_table in tables else 0
+            if st.session_state.selected_table not in tables:
+                st.session_state.selected_table = tables[0]
+            
+            default_index = tables.index(st.session_state.selected_table)
 
             selected_table = c_table.selectbox(
                 "Оберіть таблицю для аналізу", 
                 options=tables, 
                 index=default_index, 
-                key="main_table_selector"
+                key="main_table_selector",
+                on_change=on_table_change
             )
             
+            current_active_table = st.session_state.selected_table
+            
             if is_mongo:
-                query_target = selected_table
+                query_target = current_active_table
             else:
                 limit = c_limit.number_input("Ліміт рядків", min_value=1, max_value=10000, value=100)
-                query_target = f"SELECT * FROM {selected_table} LIMIT {limit}"
+                query_target = f"SELECT * FROM {current_active_table} LIMIT {limit}"
         else:
             query_label = "Колекція" if is_mongo else "SQL запит"
             query_default = "users" if is_mongo else "SELECT * FROM users LIMIT 100"
             query_target = st.text_input(query_label, query_default)
-            selected_table = "custom_query"
-
-        if selected_table != st.session_state.selected_table:
-            st.session_state.selected_table = selected_table
-            if "cached_df" in st.session_state: del st.session_state.cached_df
-            if "db_engine" in st.session_state: del st.session_state.db_engine
-            st.rerun()
+            current_active_table = "custom_query"
 
         if st.session_state.get('last_query_target') != query_target:
             if "cached_df" in st.session_state: del st.session_state.cached_df
-            if "db_engine" in st.session_state: del st.session_state.db_engine
             st.session_state.last_query_target = query_target
 
-        if 'current_table_rules' not in st.session_state or st.session_state.get('last_table') != selected_table:
-            st.session_state.current_table_rules = all_custom_rules.get(selected_table, [])
-            st.session_state.last_table = selected_table
+        if 'current_table_rules' not in st.session_state or st.session_state.get('last_table') != current_active_table:
+            st.session_state.current_table_rules = all_custom_rules.get(current_active_table, [])
+            st.session_state.last_table = current_active_table
 
         if "cached_df" not in st.session_state:
-            try:
-                st.session_state.cached_df = connector.fetch_data(query_target)
-            except Exception:
-                if "db_engine" in st.session_state: del st.session_state.db_engine
-                st.session_state.cached_df = connector.fetch_data(query_target)
+            st.session_state.cached_df = connector.fetch_data(query_target)
 
         df = st.session_state.cached_df
 
         def local_save_rules(rules):
-            save_custom_rules(selected_table, rules)
+            save_custom_rules(current_active_table, rules)
             if 'custom_rules' not in st.session_state.user_data_cache:
                 st.session_state.user_data_cache['custom_rules'] = {}
-            st.session_state.user_data_cache['custom_rules'][selected_table] = rules
+            st.session_state.user_data_cache['custom_rules'][current_active_table] = rules
 
         if df.empty:
             st.warning("Дані не знайдено.")
@@ -171,9 +171,14 @@ try:
             st.divider()
 
             with st.expander("Аналіз за типами помилок", expanded=True):
-                cols = st.columns(len(stats))
-                for i, (label, count) in enumerate(stats.items()):
-                    cols[i].markdown(error_card_html(label, count), unsafe_allow_html=True)
+                items = list(stats.items())
+                max_cols = 4  
+                
+                for chunks in [items[i:i + max_cols] for i in range(0, len(items), max_cols)]:
+                    cols = st.columns(len(chunks))
+                    for idx, (label, count) in enumerate(chunks):
+                        cols[idx].markdown(error_card_html(label, count), unsafe_allow_html=True)
+                    st.markdown("<div style='padding-top: 10px;'></div>", unsafe_allow_html=True)
 
     render_analytics_dashboard()
 

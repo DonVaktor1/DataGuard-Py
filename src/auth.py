@@ -6,7 +6,6 @@ import extra_streamlit_components as cookie_controller
 from google.cloud import firestore
 from google.oauth2 import service_account
 
-
 firebase_config = st.secrets["firebase"]
 firebase = pyrebase.initialize_app(dict(firebase_config))
 auth = firebase.auth()
@@ -35,6 +34,8 @@ def run_login():
         user = auth.sign_in_with_email_and_password(email, password)
         st.session_state.user = user
         st.session_state.auth_error = None
+        if "user_data_cache" in st.session_state:
+            del st.session_state.user_data_cache
         _cookies.set("dg_user_data", json.dumps(user), key="set_login")
     except:
         st.session_state.auth_error = "Невірна пошта або пароль"
@@ -67,6 +68,8 @@ def run_register():
         })
         st.session_state.user = user
         st.session_state.auth_error = None
+        if "user_data_cache" in st.session_state:
+            del st.session_state.user_data_cache
         _cookies.set("dg_user_data", json.dumps(user), key="set_reg")
     except Exception as e:
         st.session_state.auth_error = f"Помилка: {str(e)}"
@@ -74,12 +77,22 @@ def run_register():
 def logout():
     st.session_state.user = None
     st.session_state.auth_error = None
+    if "user_data_cache" in st.session_state:
+        del st.session_state.user_data_cache
+    if "cookies_checked" in st.session_state:
+        del st.session_state.cookies_checked
     _cookies.delete("dg_user_data")
 
 def check_auth():
     if st.session_state.get("user"):
         return True
+    
+    if st.session_state.get("cookies_checked"):
+        return False
+
     saved_user = _cookies.get("dg_user_data")
+    st.session_state["cookies_checked"] = True
+    
     if saved_user:
         try:
             user_data = json.loads(saved_user)

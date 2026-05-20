@@ -8,9 +8,12 @@ class DataValidator:
     @staticmethod
     def get_error_masks(df, custom_rules=[]):
         null_mask = df.isna()
-        if not df.empty:
-            string_df = df.astype(str).dom.map(lambda x: x.strip().lower()) if hasattr(df, 'dom') else df.astype(str).apply(lambda x: x.str.strip().str.lower())
-            null_mask = null_mask | string_df.isin(["", "none", "nan", "null"])
+        
+        if df.empty:
+            return null_mask, {k: 0 for k in ["Порожні (NULL)", "Email", "Телефон", "Дата/Час", "Числа < 0", "Аномалії віку", "Порушення лімітів", "Дублікати рядків"]}
+
+        string_df = df.astype(str).apply(lambda x: x.str.strip().str.lower())
+        null_mask = null_mask | string_df.isin(["", "none", "nan", "null"])
         
         numeric_df = df.apply(pd.to_numeric, errors='coerce')
         negative_mask = (numeric_df < 0).fillna(False)
@@ -25,7 +28,7 @@ class DataValidator:
         
         for col in df.columns:
             col_l = col.lower()
-            col_str = df[col].astype(str).str.strip()
+            col_str = string_df[col] # беремо вже готовий очищений стовпчик
             
             if any(x in col_l for x in ["email", "mail"]):
                 email_mask[col] = ~col_str.str.match(DataValidator.EMAIL_REGEX) & ~null_mask[col]
@@ -60,8 +63,6 @@ class DataValidator:
             email_mask | phone_mask | business_rules_mask | 
             custom_rules_mask
         )
-        if not df.empty:
-            final_mask.loc[duplicate_rows_mask, :] = True
 
         stats = {
             "Порожні (NULL)": int(null_mask.values.sum()),
@@ -71,7 +72,7 @@ class DataValidator:
             "Числа < 0": int(negative_mask.values.sum()),
             "Аномалії віку": int(business_rules_mask.values.sum()),
             "Порушення лімітів": int(custom_rules_mask.values.sum()),
-            "Дублікати рядочків": int(duplicate_rows_mask.sum())
+            "Дублікати рядків": int(duplicate_rows_mask.sum())
         }
         
         return final_mask, stats
