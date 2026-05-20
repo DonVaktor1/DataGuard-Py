@@ -2,7 +2,6 @@ import requests
 import streamlit as st
 import pyrebase
 import json
-import extra_streamlit_components as cookie_controller
 from google.cloud import firestore
 from google.oauth2 import service_account
 
@@ -10,7 +9,6 @@ firebase_config = st.secrets["firebase"]
 firebase = pyrebase.initialize_app(dict(firebase_config))
 auth = firebase.auth()
 
-@st.cache_resource
 def get_db():
     if "key_file_json" in st.secrets["firebase"]:
         info = json.loads(st.secrets["firebase"]["key_file_json"])
@@ -20,8 +18,6 @@ def get_db():
             info = json.load(f)
     creds = service_account.Credentials.from_service_account_info(info)
     return firestore.Client(credentials=creds, project=info['project_id'])
-
-_cookies = cookie_controller.CookieManager()
 
 def run_login():
     email = st.session_state.get("l_email")
@@ -35,7 +31,8 @@ def run_login():
         st.session_state.auth_error = None
         if "user_data_cache" in st.session_state:
             del st.session_state.user_data_cache
-        _cookies.set("dg_user_data", json.dumps(user), key="set_login")
+            
+        st.context.cookies["dg_user_data"] = json.dumps(user)
     except:
         st.session_state.auth_error = "Невірна пошта або пароль"
 
@@ -70,7 +67,8 @@ def run_register():
         st.session_state.auth_error = None
         if "user_data_cache" in st.session_state:
             del st.session_state.user_data_cache
-        _cookies.set("dg_user_data", json.dumps(user), key="set_reg")
+            
+        st.context.cookies["dg_user_data"] = json.dumps(user)
     except Exception as e:
         st.session_state.auth_error = f"Помилка: {str(e)}"
 
@@ -81,7 +79,10 @@ def logout():
         del st.session_state.user_data_cache
     if "cookies_checked" in st.session_state:
         del st.session_state.cookies_checked
-    _cookies.delete("dg_user_data")
+        
+
+    if "dg_user_data" in st.context.cookies:
+        del st.context.cookies["dg_user_data"]
 
 def check_auth():
     if st.session_state.get("user"):
@@ -90,7 +91,7 @@ def check_auth():
     if st.session_state.get("cookies_checked"):
         return False
 
-    saved_user = _cookies.get("dg_user_data")
+    saved_user = st.context.cookies.get("dg_user_data")
     st.session_state["cookies_checked"] = True
     
     if saved_user:
@@ -117,6 +118,7 @@ def delete_account():
         uid = st.session_state.user['localId']
         id_token = st.session_state.user['idToken']
         api_key = firebase_config["apiKey"]
+        
         get_db().collection("users").document(uid).delete()
         
         url = f"https://identitytoolkit.googleapis.com/v1/accounts:delete?key={api_key}"
