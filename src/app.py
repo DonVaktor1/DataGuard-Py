@@ -1,3 +1,8 @@
+import os
+import sys
+
+sys.path.append(os.path.abspath(os.path.dirname(__file__)))
+
 import streamlit as st
 from auth import check_auth
 
@@ -25,7 +30,7 @@ else:
         "views/settings_page.py", 
         title="Налаштування", 
     )
-    
+
     st.session_state.main_page_obj = main_page
     st.session_state.settings_page_obj = settings_page
     

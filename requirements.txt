@@ -8,3 +8,4 @@ pyrebase4
 google-cloud-firestore
 pymongo
 requests
+extra-streamlit-components
