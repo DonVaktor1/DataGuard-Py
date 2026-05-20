@@ -1,5 +1,5 @@
 import streamlit as st
-from auth import logout, delete_account, db
+from auth import logout, delete_account, get_db
 from styles import COLORS
 
 if "settings_updated" in st.session_state and st.session_state.settings_updated:
@@ -7,7 +7,7 @@ if "settings_updated" in st.session_state and st.session_state.settings_updated:
     st.session_state.settings_updated = False
 
 st.sidebar.title("DataGuard")
-if st.sidebar.button("На головну", use_container_width=True):
+if st.sidebar.button("На головну", width="stretch"):
     if "main_page_obj" in st.session_state:
         st.switch_page(st.session_state.main_page_obj)
     else:
@@ -20,7 +20,7 @@ try:
     uid = st.session_state.user['localId']
     if "user_data_cache" not in st.session_state:
         with st.spinner("Завантаження даних профілю..."):
-            user_doc = db.collection("users").document(uid).get()
+            user_doc = get_db().collection("users").document(uid).get()
             if user_doc.exists:
                 st.session_state.user_data_cache = user_doc.to_dict()
             else:
@@ -35,7 +35,7 @@ try:
         new_db_name = st.text_input("Назва проекту / БД", value=user_data.get('db_name', ''))
         new_conn_string = st.text_input("Рядок підключення (Connection String)", value=user_data.get('connection_string', ''), type="password")
         
-        submit_btn = st.form_submit_button("Зберегти зміни", use_container_width=True)
+        submit_btn = st.form_submit_button("Зберегти зміни", width="stretch")
         
         if submit_btn:
             if not new_db_name or not new_conn_string:
@@ -43,7 +43,7 @@ try:
             else:
                 with st.spinner("Зберігаємо зміни..."):
                     try:
-                        db.collection("users").document(uid).update({
+                        get_db().collection("users").document(uid).update({
                             "db_name": new_db_name,
                             "connection_string": new_conn_string
                         })
@@ -63,7 +63,7 @@ try:
     st.subheader("Сесія")
     st.info(f"Ви авторизовані як: **{st.session_state.user['email']}**")
     
-    if st.button("Вийти з облікового запису", type="secondary", use_container_width=True):
+    if st.button("Вийти з облікового запису", type="secondary", width="stretch"):
         logout()
         st.rerun()
 
@@ -71,7 +71,7 @@ try:
     st.markdown(f"<h3 style='color: {COLORS['brand_red']};'>Видалення акаунта</h3>", unsafe_allow_html=True) 
     confirm_delete = st.checkbox("Я чітко усвідомлюю наслідки і хочу назавжди видалити цей акаунт")
     
-    if st.button("Повністю видалити акаунт", type="primary", disabled=not confirm_delete, use_container_width=True):
+    if st.button("Повністю видалити акаунт", type="primary", disabled=not confirm_delete, width="stretch"):
         with st.spinner("Видалення профілю з системи DataGuard..."):
             if delete_account():
                 st.rerun()

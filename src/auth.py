@@ -21,7 +21,6 @@ def get_db():
     creds = service_account.Credentials.from_service_account_info(info)
     return firestore.Client(credentials=creds, project=info['project_id'])
 
-db = get_db()
 _cookies = cookie_controller.CookieManager()
 
 def run_login():
@@ -60,7 +59,8 @@ def run_register():
         auth.create_user_with_email_and_password(email, password)
         user = auth.sign_in_with_email_and_password(email, password)
         uid = user['localId']
-        db.collection("users").document(uid).set({
+        
+        get_db().collection("users").document(uid).set({
             "email": email, 
             "connection_string": conn_string,
             "db_name": db_name,
@@ -105,7 +105,7 @@ def check_auth():
 def save_custom_rules(table_name, rules):
     if st.session_state.user:
         uid = st.session_state.user['localId']
-        db.collection("users").document(uid).update({
+        get_db().collection("users").document(uid).update({
             f"custom_rules.{table_name}": rules
         })
 
@@ -117,8 +117,7 @@ def delete_account():
         uid = st.session_state.user['localId']
         id_token = st.session_state.user['idToken']
         api_key = firebase_config["apiKey"]
-        
-        db.collection("users").document(uid).delete()
+        get_db().collection("users").document(uid).delete()
         
         url = f"https://identitytoolkit.googleapis.com/v1/accounts:delete?key={api_key}"
         payload = {"idToken": id_token}

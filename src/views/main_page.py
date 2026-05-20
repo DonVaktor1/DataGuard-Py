@@ -3,7 +3,7 @@ import plotly.express as px
 from datetime import datetime
 import time
 
-from auth import db, save_custom_rules
+from auth import get_db, save_custom_rules
 from connectors import DBConnector
 from validator import DataValidator
 from styles import COLORS, error_card_html, get_table_style
@@ -16,14 +16,14 @@ if "last_auto_refresh_time" not in st.session_state:
 
 st.sidebar.title("DataGuard")
 
-if st.sidebar.button("Оновити дані", use_container_width=True):
+if st.sidebar.button("Оновити дані", width="stretch"):
     if "user_data_cache" in st.session_state: del st.session_state.user_data_cache
     if "cached_df" in st.session_state: del st.session_state.cached_df
     if "table_names_cache" in st.session_state: del st.session_state.table_names_cache
     st.session_state.last_auto_refresh_time = time.time()
     st.rerun()
 
-if st.sidebar.button("Налаштування", use_container_width=True):
+if st.sidebar.button("Налаштування", width="stretch"):
     if "settings_page_obj" in st.session_state:
         st.switch_page(st.session_state.settings_page_obj)
     else:
@@ -39,7 +39,7 @@ try:
     
     if "user_data_cache" not in st.session_state:
         with st.spinner("Завантаження..."):
-            user_doc = db.collection("users").document(uid).get()
+            user_doc = get_db().collection("users").document(uid).get()
             if user_doc.exists:
                 st.session_state.user_data_cache = user_doc.to_dict()
             else:
@@ -129,7 +129,7 @@ try:
                 new_val = c3.number_input("Значення", value=0.0)
             
                 c4.markdown("<div style='padding-top: 28px;'></div>", unsafe_allow_html=True)
-                if c4.button("Додати", use_container_width=True):
+                if c4.button("Додати", width="stretch"):
                     st.session_state.current_table_rules.append({"column": new_col, "operator": new_op, "value": new_val})
                     local_save_rules(st.session_state.current_table_rules)
                     if "cached_df" in st.session_state: del st.session_state.cached_df
@@ -142,7 +142,7 @@ try:
                     r_col.write(f"**{rule['column']}** {rule['operator']} {rule['value']}")
                     
                     rule_key = f"del_{rule['column']}_{i}"
-                    if r_btn.button("Видалити", key=rule_key, use_container_width=True):
+                    if r_btn.button("Видалити", key=rule_key, width="stretch"):
                         st.session_state.current_table_rules.remove(rule)
                         local_save_rules(st.session_state.current_table_rules)
                         if "cached_df" in st.session_state: del st.session_state.cached_df
@@ -158,7 +158,7 @@ try:
                 fig = px.pie(values=[total - errors, errors], names=["Валідні", "Аномалії"], hole=0.5, height=280,
                             color=["Валідні", "Аномалії"], color_discrete_map={"Валідні": COLORS["valid"], "Аномалії": COLORS["invalid"]})
                 fig.update_layout(margin=dict(t=0, b=0, l=0, r=0))
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch")
 
             with col_metrics:
                 st.metric("Якість даних", f"{accuracy:.1f}%")
@@ -167,7 +167,7 @@ try:
 
             st.write("### Таблиця")
             styled_df = df.style.apply(get_table_style(final_mask), axis=None)
-            st.dataframe(styled_df, use_container_width=True, height=400)
+            st.dataframe(styled_df, width="stretch", height=400)
             st.divider()
 
             with st.expander("Аналіз за типами помилок", expanded=True):
