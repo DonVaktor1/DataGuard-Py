@@ -4,3 +4,7 @@ great_expectations
 streamlit
 plotly
 python-dotenv
+pyrebase4
+google-cloud-firestore
+pymongo
+requests
