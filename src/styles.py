@@ -1,13 +1,16 @@
-import streamlit as st
+import pandas as pd
 
 COLORS = {
+    "brand_red": "#ff4b4b",
+    "brand_gray": "#888888",
     "valid": "#00cc96",
     "invalid": "#ef553b",
     "success": "#28a745",
     "danger": "#dc3545",
     "text_muted": "#888888",
     "bg_card": "rgba(0,0,0,0.05)",
-    "error_overlay": "rgba(255, 0, 0, 0.15)"
+    "error_overlay": "rgba(255, 0, 0, 0.15)",
+    
 }
 
 def error_card_html(label, count):
@@ -21,8 +24,7 @@ def error_card_html(label, count):
 
 def get_table_style(mask):
     def apply(data):
-        style_df = data.copy()
-        style_df[:] = ''
+        style_df = pd.DataFrame('', index=data.index, columns=data.columns)
         style_df[mask] = f'background-color: {COLORS["error_overlay"]}; border: 1px solid {COLORS["danger"]};'
         return style_df
     return apply

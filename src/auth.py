@@ -1,9 +1,11 @@
+import requests
 import streamlit as st
 import pyrebase
 import json
 import extra_streamlit_components as cookie_controller
 from google.cloud import firestore
 from google.oauth2 import service_account
+
 
 firebase_config = st.secrets["firebase"]
 firebase = pyrebase.initialize_app(dict(firebase_config))
@@ -57,7 +59,8 @@ def run_register():
         db.collection("users").document(uid).set({
             "email": email, 
             "connection_string": conn_string,
-            "db_name": db_name 
+            "db_name": db_name,
+            "custom_rules": {} 
         })
         st.session_state.user = user
         st.session_state.auth_error = None
@@ -82,3 +85,34 @@ def check_auth():
         except:
             return False
     return False
+
+def save_custom_rules(table_name, rules):
+    if st.session_state.user:
+        uid = st.session_state.user['localId']
+        db.collection("users").document(uid).update({
+            f"custom_rules.{table_name}": rules
+        })
+
+def delete_account():
+    if not st.session_state.get("user"):
+        return False
+        
+    try:
+        uid = st.session_state.user['localId']
+        id_token = st.session_state.user['idToken']
+        api_key = firebase_config["apiKey"]
+        
+        db.collection("users").document(uid).delete()
+        
+        url = f"https://identitytoolkit.googleapis.com/v1/accounts:delete?key={api_key}"
+        payload = {"idToken": id_token}
+        response = requests.post(url, json=payload)
+        if response.status_code == 200:
+            logout()
+            return True
+        else:
+            st.error(f"Не вдалося видалити профіль: {response.text}")
+            return False
+    except Exception as e:
+        st.error(f"Помилка при видаленні акаунта: {str(e)}")
+        return False
