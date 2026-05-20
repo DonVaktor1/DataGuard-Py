@@ -13,9 +13,12 @@ auth = firebase.auth()
 
 @st.cache_resource
 def get_db():
-    key_path = st.secrets["firebase"]["key_file"]
-    with open(key_path, "r") as f:
-        info = json.load(f)
+    if "key_file_json" in st.secrets["firebase"]:
+        info = json.loads(st.secrets["firebase"]["key_file_json"])
+    else:
+        key_path = st.secrets["firebase"]["key_file"]
+        with open(key_path, "r") as f:
+            info = json.load(f)
     creds = service_account.Credentials.from_service_account_info(info)
     return firestore.Client(credentials=creds, project=info['project_id'])
 
