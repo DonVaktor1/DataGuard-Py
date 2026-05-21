@@ -59,7 +59,7 @@ if "last_auto_refresh_time" not in st.session_state:
 st.sidebar.title("DataGuard")
 
 if st.sidebar.button("Оновити дані", width="stretch"):
-    for key in ["user_data_cache", "cached_df", "table_names_cache", "user_db_connector", "selected_table"]:
+    for key in ["user_data_cache", "cached_df", "table_names_cache", "user_db_connector", "selected_table", "last_query_target"]:
         if key in st.session_state:
             del st.session_state[key]
     st.session_state.last_auto_refresh_time = time.time()
@@ -119,14 +119,15 @@ def render_analytics_dashboard():
             query_target = current_active_table
         else:
             limit = c_limit.number_input(
-                "Ліміт рядків",
-                min_value=1,
-                max_value=10000,
-                value=100
-            )
-            clean_table = current_active_table.replace("`", "").replace('"', "").replace("'", "")
+            "Ліміт рядків",
+            min_value=1,
+            max_value=10000,
+            value=100
+        )
 
-            query_target = f'SELECT * FROM "{clean_table}" LIMIT {int(limit)}'
+        clean_table = current_active_table.replace("`", "").replace('"', "").replace("'", "")
+
+        query_target = f'SELECT * FROM "{clean_table}" LIMIT {int(limit)}'
     else:
         query_label = "Колекція" if is_mongo else "SQL запит"
         query_default = "users" if is_mongo else "SELECT * FROM users LIMIT 100"
@@ -148,6 +149,7 @@ def render_analytics_dashboard():
             return
 
     df = st.session_state.cached_df
+    
     all_custom_rules = st.session_state.user_data_cache.get("custom_rules", {})
     current_table_rules = all_custom_rules.get(current_active_table, [])
 
@@ -244,6 +246,7 @@ def render_analytics_dashboard():
             for idx, (label, count) in enumerate(chunks):
                 cols[idx].markdown(error_card_html(label, count), unsafe_allow_html=True)
             st.markdown("<div style='padding-top: 10px;'></div>", unsafe_allow_html=True)
+
 try:
     render_analytics_dashboard()
 except Exception as e:
