@@ -35,12 +35,8 @@ if not conn_string:
 
 is_mongo = conn_string.lower().startswith("mongodb")
 
-@st.cache_resource
-def get_connector(connection_string, user_id):
-    return DBConnector(connection_string)
-
 if "user_db_connector" not in st.session_state:
-    st.session_state.user_db_connector = get_connector(conn_string, uid)
+    st.session_state.user_db_connector = DBConnector(conn_string)
 
 if "table_names_cache" not in st.session_state:
     try:
@@ -63,7 +59,7 @@ if "last_auto_refresh_time" not in st.session_state:
 st.sidebar.title("DataGuard")
 
 if st.sidebar.button("Оновити дані", width="stretch"):
-    for key in ["user_data_cache", "cached_df", "table_names_cache"]:
+    for key in ["user_data_cache", "cached_df", "table_names_cache", "user_db_connector", "selected_table"]:
         if key in st.session_state:
             del st.session_state[key]
     st.session_state.last_auto_refresh_time = time.time()
@@ -128,8 +124,9 @@ def render_analytics_dashboard():
                 max_value=10000,
                 value=100
             )
-            safe_table = current_active_table.replace("", "")
-            query_target = f"SELECT * FROM {safe_table} LIMIT {int(limit)}"
+            clean_table = current_active_table.replace("`", "").replace('"', "").replace("'", "")
+
+            query_target = f'SELECT * FROM "{clean_table}" LIMIT {int(limit)}'
     else:
         query_label = "Колекція" if is_mongo else "SQL запит"
         query_default = "users" if is_mongo else "SELECT * FROM users LIMIT 100"
@@ -152,7 +149,6 @@ def render_analytics_dashboard():
 
     df = st.session_state.cached_df
     all_custom_rules = st.session_state.user_data_cache.get("custom_rules", {})
-    
     current_table_rules = all_custom_rules.get(current_active_table, [])
 
     def local_save_rules(rules):
@@ -248,7 +244,6 @@ def render_analytics_dashboard():
             for idx, (label, count) in enumerate(chunks):
                 cols[idx].markdown(error_card_html(label, count), unsafe_allow_html=True)
             st.markdown("<div style='padding-top: 10px;'></div>", unsafe_allow_html=True)
-
 try:
     render_analytics_dashboard()
 except Exception as e:
