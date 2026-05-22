@@ -1,5 +1,4 @@
 from zoneinfo import ZoneInfo
-
 import streamlit as st
 import plotly.express as px
 from datetime import datetime
@@ -39,9 +38,7 @@ if "user_db_connector" not in st.session_state:
 if "table_names_cache" not in st.session_state:
     try:
         with st.spinner("Отримання списку таблиць..."):
-            st.session_state.table_names_cache = (
-                st.session_state.user_db_connector.get_table_names()
-            )
+            st.session_state.table_names_cache = st.session_state.user_db_connector.get_table_names()
     except Exception as e:
         st.error(f"Помилка підключення до БД: {e}")
         st.stop()
@@ -56,7 +53,6 @@ if "last_auto_refresh_time" not in st.session_state:
 
 st.sidebar.title("DataGuard")
 
-
 if st.sidebar.button("Оновити дані", use_container_width=True):
     keys_to_clear = [
         "user_data_cache",
@@ -65,10 +61,8 @@ if st.sidebar.button("Оновити дані", use_container_width=True):
         "user_db_connector",
         "last_query_target"
     ]
-    
     for key in keys_to_clear:
         st.session_state.pop(key, None)
-
     st.session_state.last_auto_refresh_time = time.time()
     st.rerun()
 
@@ -78,9 +72,114 @@ if st.sidebar.button("Налаштування", use_container_width=True):
     else:
         st.switch_page("views/settings_page.py")
 
+if st.sidebar.button("Сформувати звіт", use_container_width=True):
+    try:
+        df_for_report = st.session_state.get("cached_df")
+        if df_for_report is not None and not df_for_report.empty:
+            current_active_table = st.session_state.get("selected_table", "custom_query")
+            all_custom_rules = st.session_state.user_data_cache.get("custom_rules", {})
+            current_table_rules = all_custom_rules.get(current_active_table, [])
+            
+            final_mask, stats = DataValidator.get_error_masks(df_for_report, current_table_rules)
+            total = df_for_report.size
+            errors = final_mask.values.sum()
+            accuracy = ((total - errors) / total * 100) if total > 0 else 100
+
+            errors_table_rows = ""
+            active_errors = {label: count for label, count in stats.items() if count > 0}
+            
+            if active_errors:
+                for label, count in active_errors.items():
+                    error_percentage = (count / errors * 100) if errors > 0 else 0
+                    errors_table_rows += f"""
+                    <tr>
+                        <td style="border: 1px solid #ddd; padding: 10px;">{label}</td>
+                        <td style="border: 1px solid #ddd; padding: 10px; font-weight: bold; text-align: center;">{count}</td>
+                        <td style="border: 1px solid #ddd; padding: 10px; color: #666; text-align: center;">{error_percentage:.1f}%</td>
+                    </tr>
+                    """
+            else:
+                errors_table_rows = """
+                <tr>
+                    <td colspan="3" style="border: 1px solid #ddd; padding: 15px; text-align: center; color: green; font-weight: bold;">
+                        Аномалій не виявлено. Дані повністю валідні!
+                    </td>
+                </tr>
+                """
+
+            print_html = f"""
+            <div id="print-report-content" style="font-family: Arial, sans-serif; padding: 25px; color: #000; background: #fff;">
+                <h1 style="text-align: center; border-bottom: 3px solid #333; padding-bottom: 12px; margin-bottom: 5px;">
+                    Звіт про якість даних: {project_name}
+                </h1>
+                <p style="text-align: right; color: #666; font-size: 14px; margin-bottom: 25px;">
+                    Дата формування: {datetime.now().strftime('%d.%m.%Y %H:%M:%S')}
+                </p>
+                
+                <h3 style="color: #333; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Основні метрики таблиці "{current_active_table}"</h3>
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px; font-size: 15px;">
+                    <tr style="background-color: #f8f9fa;">
+                        <th style="border: 1px solid #ddd; padding: 10px; text-align: left; width: 60%;">Метрика</th>
+                        <th style="border: 1px solid #ddd; padding: 10px; text-align: center; width: 40%;">Значення</th>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid #ddd; padding: 10px;">Рівень якості (Accuracy)</td>
+                        <td style="border: 1px solid #ddd; padding: 10px; font-weight: bold; text-align: center; color: {'#198754' if accuracy > 90 else '#fd7e14'}; font-size: 16px;">
+                            {accuracy:.1f}%
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid #ddd; padding: 10px;">Загальна кількість комірок (Cells)</td>
+                        <td style="border: 1px solid #ddd; padding: 10px; text-align: center; font-weight: bold;">{total}</td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid #ddd; padding: 10px;">Знайдено аномалій</td>
+                        <td style="border: 1px solid #ddd; padding: 10px; color: #dc3545; font-weight: bold; text-align: center; font-size: 16px;">
+                            {int(errors)}
+                        </td>
+                    </tr>
+                </table>
+
+                <h3 style="color: #333; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Детальний аналіз аномалій</h3>
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 15px;">
+                    <tr style="background-color: #f8f9fa;">
+                        <th style="border: 1px solid #ddd; padding: 10px; text-align: left; width: 50%;">Тип проблеми / Помилки</th>
+                        <th style="border: 1px solid #ddd; padding: 10px; text-align: center; width: 25%;">Кількість</th>
+                        <th style="border: 1px solid #ddd; padding: 10px; text-align: center; width: 25%;">% від усіх помилок</th>
+                    </tr>
+                    {errors_table_rows}
+                </table>
+                
+                <footer style="margin-top: 60px; text-align: center; font-size: 12px; color: #999; border-top: 1px solid #ddd; padding-top: 15px;">
+                    Звіт згенеровано автоматично за допомогою системи DataGuard.
+                </footer>
+            </div>
+            """
+
+            st.components.v1.html(f"""
+                <script>
+                    var printWindow = window.open('', '_blank');
+                    printWindow.document.write('<html><head><title>DataGuard Report</title></head><body>');
+                    printWindow.document.write(`{print_html}`);
+                    printWindow.document.write('</body></html>');
+                    printWindow.document.close();
+                    printWindow.focus();
+                    setTimeout(function() {{
+                        printWindow.print();
+                        printWindow.close();
+                    }}, 500);
+                </script>
+            """, height=0)
+        else:
+            st.sidebar.error("Немає даних для формування звіту.")
+    except Exception as report_err:
+        st.sidebar.error(f"Не вдалося згенерувати звіт: {report_err}")
+
+
 def on_table_change():
     st.session_state.selected_table = st.session_state.main_table_selector
     st.session_state.pop("cached_df", None)
+
 
 @st.fragment(run_every=60)
 def render_analytics_dashboard():
@@ -248,6 +347,7 @@ def render_analytics_dashboard():
 
             for idx, (label, count) in enumerate(chunk):
                 cols[idx].markdown(error_card_html(label, count), unsafe_allow_html=True)
+
 
 try:
     render_analytics_dashboard()
