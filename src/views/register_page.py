@@ -10,8 +10,8 @@ with auth_card:
     st.markdown("<h1 style='text-align: center; margin-bottom: 20px;'>DataGuard</h1>", unsafe_allow_html=True)
     st.markdown(f"<h4 style='text-align: center; color: {COLORS['brand_gray']};'>Реєстрація проекту</h4>", unsafe_allow_html=True)
 
-    if st.session_state.auth_error:
-        st.error(st.session_state.auth_error)
+    if st.session_state.get("auth_error"):
+        st.error(st.session_state.get("auth_error"))
 
     st.text_input("Назва проекту", key="r_db_name")
     st.text_input("Email", key="r_email")
