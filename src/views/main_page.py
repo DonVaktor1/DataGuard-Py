@@ -3,16 +3,12 @@ import plotly.express as px
 from datetime import datetime
 import time
 
-from auth import check_auth, get_db, save_custom_rules
+from auth import get_db, save_custom_rules
 from connectors import DBConnector
 from validator import DataValidator
 from styles import COLORS, error_card_html, get_table_style
 
 st.set_page_config(layout="wide", page_title="DataGuard Dashboard")
-
-if not check_auth():
-    st.warning("Будь ласка, увійдіть в систему або зачекайте завантаження сесії...")
-    st.stop()
 
 uid = st.session_state.user["localId"]
 
