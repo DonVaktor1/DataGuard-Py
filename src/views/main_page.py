@@ -1,3 +1,5 @@
+from zoneinfo import ZoneInfo
+
 import streamlit as st
 import plotly.express as px
 from datetime import datetime
@@ -54,15 +56,17 @@ if "last_auto_refresh_time" not in st.session_state:
 
 st.sidebar.title("DataGuard")
 
+
 if st.sidebar.button("Оновити дані", use_container_width=True):
-    for key in [
+    keys_to_clear = [
         "user_data_cache",
         "cached_df",
         "table_names_cache",
         "user_db_connector",
-        "selected_table",
         "last_query_target"
-    ]:
+    ]
+    
+    for key in keys_to_clear:
         st.session_state.pop(key, None)
 
     st.session_state.last_auto_refresh_time = time.time()
@@ -91,7 +95,8 @@ def render_analytics_dashboard():
         tables[0] if tables else "custom_query"
     )
 
-    now = datetime.now()
+    now = datetime.now(ZoneInfo("Europe/Kyiv"))
+
     st.title(f"Дашборд: {project_name} | Поточний час: {now.strftime('%H:%M:%S')}")
     st.divider()
 
